@@ -32,19 +32,28 @@ except Exception as e:
 	raise
 
 sensors = {
-    'LA1':{'Temp':0.0,'Updated':''},
-    'LA2':{'Temp':0.0,'Updated':''},
-    'VA1':{'Temp':0.0,'Updated':''},
-    'VA2':{'Temp':0.0,'Updated':''},
-    'VA3':{'Temp':0.0,'Updated':''},
-    'LH': {'Temp':0.0,'Updated':''},
-    'OD1':{'Temp':0.0,'Updated':''},
-    'Water':{'Temp':0.0,'Updated':''}
+    'LA1':    {'Sensor': 'Lilla Astrid  ', 'Temp':0.0,'Updated':''},
+    'LA2':    {'Sensor': 'Studio        ', 'Temp':0.0,'Updated':''},
+    'VA1':    {'Sensor': 'MH1           ', 'Temp':0.0,'Updated':''},
+    'VA2':    {'Sensor': 'MH2           ', 'Temp':0.0,'Updated':''},
+    'VA3':    {'Sensor': 'Parvi         ', 'Temp':0.0,'Updated':''},
+    'LH':     {'Sensor': 'Lilla Astrid  ', 'Temp':0.0,'Updated':''},
+    'OD1':    {'Sensor': 'Outdoor       ', 'Temp':0.0,'Updated':''},
+    'Water':  {'Sensor': 'Vesi -1m      ', 'Temp':0.0,'Updated':''}
 }
 
+def pretty_print_dict(d, indent=0):
+    for key, value in d.items():
+        print('\t' * indent + str(key))
+        if isinstance(value, dict):
+            pretty_print_dict(value, indent+1)
+        else:
+            print('\t' * (indent + 1) + str(value))
+
+
 def print_sensors():
-    for sensor in sensors:
-        print(sensor)
+    for key in sensors.keys():
+        print ("{0:8s} {1} {2:4.1f} {3}".format(key, sensors[key]['Sensor'], sensors[key]['Temp'],sensors[key]['Updated']))
 
 
 def parse_args() -> argparse.Namespace:
@@ -103,11 +112,11 @@ def main() -> int:
 					
 					if fields[1] in sensors:
 						if fields[2] in sensors[fields[1]]:
-							sensors[fields[1]]['Temp'] = fields[3]
-					
-					
-					print (sensors)
-					print(text, fields)
+							sensors[fields[1]]['Temp'] = float(fields[3])
+							sensors[fields[1]]['Updated'] = ts
+					print_sensors()
+					#print (sensors)
+					#print(text, fields)
 				print(f"{ts}  {text}")
 	except KeyboardInterrupt:
 		print("\nInterrupted by user, closing serial port...")
