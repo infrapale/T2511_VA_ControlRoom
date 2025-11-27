@@ -24,9 +24,8 @@ import sys
 import tkinter as tk
 from threading import Thread
 import time
-
-import time
 from datetime import datetime
+from datetime import timedelta
 
 try:
     import serial
@@ -57,7 +56,29 @@ def print_sensors():
         print(format_sensor(key))
 
 def format_sensor(key) -> str:
-    return ("{0:8s} {1:12s} {2:4.1f} {3:4.0f}  < {4}".format(key, sensors[key]['Sensor'], sensors[key]['Temp'], sensors[key]['Hum'],sensors[key]['Updated']))
+    s = "{0:8s} {1:12s} {2:4.1f} {3:4.0f}".format(key, sensors[key]['Sensor'], sensors[key]['Temp'], sensors[key]['Hum'])
+    try:
+        s = s + "  < {0}".format(sensors[key]['Updated'].strftime("%Y-%m-%d %H:%M:%S"))
+    except:
+        s = s + "  < ---"
+    return (s)
+
+SENSOR_STATUS_OK = 0
+SENSOR_STATUS_NO_DATA = 1
+SENSOR_STATUS_OUTDATED = 2
+SENSOR_STATUS_HIGH_TEMPERATURE = 3
+SENSOR_STATUS_LOW_TEMPERATURE = 4
+
+def get_sensor_status(key):
+    status = SENSOR_STATUS_OK
+    if sensors[key]['Updated']:
+        status = SENSOR_STATUS_OK 
+        diff = datetime.now() - sensors[key]['Updated']
+        if diff.total_seconds() > 15:
+            status = SENSOR_STATUS_OUTDATED
+    else:
+        status = SENSOR_STATUS_NO_DATA
+    return (status) 
 
 
 def parse_args() -> argparse.Namespace:
@@ -84,7 +105,6 @@ def open_serial(port: str, baud: int, timeout: float) -> serial.Serial:
 
 def format_ts() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")[:-3]
-    #return datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
 def parse_line(line):
     try:
@@ -108,7 +128,7 @@ def parse_line(line):
                             # sensors[fields[1]]['Temp'] = float(fields[3])
                             try:
                                 sensors[fields[1]][fields[2]] = float(fields[3])
-                                sensors[fields[1]]['Updated'] = ts
+                                sensors[fields[1]]['Updated'] = datetime.now()
                             except:
                                 pass
                             
@@ -148,7 +168,13 @@ def update_loop(root, labels):
         parse_line(line)
         #labels[0].config(text=f"Counter: {counter}")
         for i in range(nbr_of_sensors):
-            labels[i].config(text=format_sensor(msg_tags[i]))
+            sensor_status =  get_sensor_status(msg_tags[i])
+            if sensor_status == SENSOR_STATUS_OK:
+                labels[i].config(text=format_sensor(msg_tags[i]),bg='green',fg='white')
+            elif sensor_status == SENSOR_STATUS_NO_DATA:
+                labels[i].config(text=format_sensor(msg_tags[i]),bg='grey',fg='black')
+            elif sensor_status == SENSOR_STATUS_OUTDATED:
+                labels[i].config(text=format_sensor(msg_tags[i]),bg='orange',fg='black')
         #labels[0].config(text=format_sensor('VA1'))
         #labels[1].config(text=f"Double: {counter * 2}")
         #labels[2].config(text=f"Square: {counter ** 2}")
@@ -170,7 +196,7 @@ def main() -> int:
     labels = []
     for i in range(nbr_of_sensors):
         label = tk.Label(root, text="Updating...", font=("Arial", 12))
-        label.pack(pady=5)
+        label.pack(anchor=tk.W, pady=5)
         labels.append(label)
 
     # Start update loop in a separate thread
