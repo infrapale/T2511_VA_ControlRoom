@@ -26,6 +26,7 @@ from threading import Thread
 import time
 from datetime import datetime
 from datetime import timedelta
+import json
 
 try:
     import serial
@@ -35,28 +36,38 @@ except Exception as e:
     raise
 
 sensors = {
-    'LA1':    {'Sensor': 'Lilla Astrid  ', 'Temp':0.0, 'Hum':0.0, 'Updated':''},
-    'LA2':    {'Sensor': 'Studio        ', 'Temp':0.0, 'Hum':0.0, 'Updated':''},
-    'VA1':    {'Sensor': 'MH1           ', 'Temp':0.0, 'Hum':0.0, 'Updated':''},
-    'VA2':    {'Sensor': 'MH2           ', 'Temp':0.0, 'Hum':0.0, 'Updated':''},
-    'VA3':    {'Sensor': 'Parvi         ', 'Temp':0.0, 'Hum':0.0, 'Updated':''},
-    'LH':     {'Sensor': 'Lilla Astrid  ', 'Temp':0.0, 'Hum':0.0, 'Updated':''},
-    'OD1':    {'Sensor': 'Outdoor       ', 'Temp':0.0, 'Hum':0.0, 'Updated':''},
-    'Water':  {'Sensor': 'Vesi -1m      ', 'Temp':0.0, 'Hum':0.0, 'Updated':''}
+    
+    'LA1_T':    {'Sensor': 'Lilla Astrid  ', 'Type':'Temp','Value':0.0, 'Min':10.0, 'Max': 30.0, 'Updated':''},
+    'LA2_T':    {'Sensor': 'Studio        ', 'Type':'Temp','Value':0.0, 'Min':10.0, 'Max': 30.0, 'Updated':''},
+    'VA1_T':    {'Sensor': 'MH1           ', 'Type':'Temp','Value':0.0, 'Min':10.0, 'Max': 30.0, 'Updated':''},
+    'VA1_H':    {'Sensor': 'MH1           ', 'Type':'Hum', 'Value':0.0, 'Min':10.0, 'Max': 30.0, 'Updated':''},
+    'VA2_T':    {'Sensor': 'MH2           ', 'Type':'Temp','Value':0.0, 'Min':10.0, 'Max': 30.0, 'Updated':''},
+    'VA3_T':    {'Sensor': 'Parvi         ', 'Type':'Temp','Value':0.0, 'Min':10.0, 'Max': 30.0, 'Updated':''},
+    'LH_T':     {'Sensor': 'Lilla Astrid  ', 'Type':'Temp','Value':0.0, 'Min':10.0, 'Max': 30.0, 'Updated':''},
+    'OD1_T':    {'Sensor': 'Outdoor       ', 'Type':'Temp','Value':0.0, 'Min':10.0, 'Max': 30.0, 'Updated':''},
+    'Water_T':  {'Sensor': 'Vesi -1m      ', 'Type':'Temp','Value':0.0, 'Min':10.0, 'Max': 30.0, 'Updated':''}
 }
+
+with open("sensor_dict.json","w") as fp:
+    json.dump(sensors,fp)
 
 msg_tags = list(sensors.keys())
 print (msg_tags)
 nbr_of_sensors = len(msg_tags)
 
 def print_sensors():
-    print("{0:8s} {1:14s} {2:6s} {3:4s} {4}".format('Sensor','Location','Temp', 'Hum', 'Updated'))
+    print("{0:8s} {1:14s} {2:6s} {3:4s} {4}".format('Sensor','Location','Value', 'Hum', 'Updated'))
     for key in sensors.keys():
         # print ("{0:8s} {1:12s} {2:4.1f} {3:4.0f} {4}".format(key, sensors[key]['Sensor'], sensors[key]['Temp'], sensors[key]['Hum'],sensors[key]['Updated']))
         print(format_sensor(key))
 
 def format_sensor(key) -> str:
-    s = "{0:8s} {1:12s} {2:4.1f} {3:4.0f}".format(key, sensors[key]['Sensor'], sensors[key]['Temp'], sensors[key]['Hum'])
+    s = "{0:8s} {1:12s}".format(key, sensors[key]['Sensor'], )
+    if 'Type' in sensors[key].keys():
+        if sensors[key]['Type'] == 'Temp':       
+            s = s + " Temp {0:4.1f}C ".format(sensors[key]['Value'])
+        elif sensors[key]['Type'] == 'Hum':       
+            s = s + " Hum {0:4.0f}KPa ".format(sensors[key]['Value'])
     try:
         s = s + "  < {0}".format(sensors[key]['Updated'].strftime("%Y-%m-%d %H:%M:%S"))
     except:
@@ -74,8 +85,13 @@ def get_sensor_status(key):
     if sensors[key]['Updated']:
         status = SENSOR_STATUS_OK 
         diff = datetime.now() - sensors[key]['Updated']
-        if diff.total_seconds() > 15:
+        if diff.total_seconds() > 45:
             status = SENSOR_STATUS_OUTDATED
+        elif sensors[key]['Value'] < sensors[key]['Min']:
+            status = SENSOR_STATUS_LOW_TEMPERATURE
+        elif sensors[key]['Value'] > sensors[key]['Max']:
+            status = SENSOR_STATUS_HIGH_TEMPERATURE
+            
     else:
         status = SENSOR_STATUS_NO_DATA
     return (status) 
@@ -122,12 +138,12 @@ def parse_line(line):
                     print(text)
                     text = text[1:-1]
                     fields = text.split(';')
-                    
+                    print(fields)
                     if fields[1] in sensors:
-                        if fields[2] in sensors[fields[1]]:
+                        if fields[2] == sensors[fields[1]]['Type']:
                             # sensors[fields[1]]['Temp'] = float(fields[3])
                             try:
-                                sensors[fields[1]][fields[2]] = float(fields[3])
+                                sensors[fields[1]]['Value'] = float(fields[3])
                                 sensors[fields[1]]['Updated'] = datetime.now()
                             except:
                                 pass
@@ -167,6 +183,7 @@ def update_loop(root, labels):
             print(line)
         parse_line(line)
         #labels[0].config(text=f"Counter: {counter}")
+        # https://www.plus2net.com/python/tkinter-colors.php
         for i in range(nbr_of_sensors):
             sensor_status =  get_sensor_status(msg_tags[i])
             if sensor_status == SENSOR_STATUS_OK:
@@ -174,9 +191,13 @@ def update_loop(root, labels):
             elif sensor_status == SENSOR_STATUS_NO_DATA:
                 labels[i].config(text=format_sensor(msg_tags[i]),bg='grey',fg='black')
             elif sensor_status == SENSOR_STATUS_OUTDATED:
-                labels[i].config(text=format_sensor(msg_tags[i]),bg='orange',fg='black')
+                labels[i].config(text=format_sensor(msg_tags[i]),bg='chocolate',fg='black')
+            elif sensor_status == SENSOR_STATUS_LOW_TEMPERATURE:
+                labels[i].config(text=format_sensor(msg_tags[i]),bg='cyan',fg='black')
+            elif sensor_status == SENSOR_STATUS_HIGH_TEMPERATURE:
+                labels[i].config(text=format_sensor(msg_tags[i]),bg='crimson',fg='gold1')
         #labels[0].config(text=format_sensor('VA1'))
-        #labels[1].config(text=f"Double: {counter * 2}")
+            #labels[1].config(text=f"Double: {counter * 2}")
         #labels[2].config(text=f"Square: {counter ** 2}")
         #labels[3].config(text=f"Time: {time.time():.2f}")
         #counter += 1
@@ -184,20 +205,38 @@ def update_loop(root, labels):
 
 
 
+DIM_WIDTH = 800
+DIM_HEIGHT = 600
+DIM_ROWS  = 16
+DIM_ROW_WIDTH = 500
+DIM_ROW_HEIGHT = 40
+DIM_BTN_X0     = DIM_ROW_WIDTH +10
+DIM_BTN_WIDTH  = DIM_WIDTH - DIM_ROW_WIDTH -20
+
+
+def cb_verify(tag):
+    print(tag)
 
 def main() -> int:
     #read_messages(ser)
 
     root = tk.Tk()
     root.title("Villa Astrid Control Room")
-    root.geometry("480x400")
+    geom = "{0}x{1}".format(DIM_WIDTH,DIM_HEIGHT)
+    #root.geometry("800x400")
+    root.geometry(geom)
 
     # Create 4 labels
     labels = []
+    buttons = []
     for i in range(nbr_of_sensors):
         label = tk.Label(root, text="Updating...", font=("Arial", 12))
-        label.pack(anchor=tk.W, pady=5)
+        # label.pack(anchor=tk.W, pady=5, width=200)
+        label.place(x=0, y=i*DIM_ROW_HEIGHT, width=DIM_ROW_WIDTH, height=DIM_ROW_HEIGHT)
         labels.append(label)
+        btn = tk.Button(root,text='OK', command=lambda tag = msg_tags[i]: cb_verify(tag))
+        btn.place(x=DIM_BTN_X0, y=i*DIM_ROW_HEIGHT, width=DIM_BTN_WIDTH, height=DIM_ROW_HEIGHT)
+        buttons.append(btn)
 
     # Start update loop in a separate thread
     thread = Thread(target=update_loop, args=(root, labels), daemon=True)
