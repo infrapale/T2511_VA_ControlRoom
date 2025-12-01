@@ -22,6 +22,7 @@ import argparse
 import os
 import sys
 import tkinter as tk
+from tkinter import simpledialog
 from threading import Thread
 import time
 from datetime import datetime
@@ -38,7 +39,7 @@ except Exception as e:
 sensors = {
     
     'LA1_T':    {'Sensor': 'Lilla Astrid  ', 'Type':'Temp','Value':0.0, 'Min':10.0, 'Max': 30.0, 'Updated':''},
-    'LA2_T':    {'Sensor': 'Studio        ', 'Type':'Temp','Value':0.0, 'Min':10.0, 'Max': 30.0, 'Updated':''},
+    'LA2_T':    {'Sensor': 'Studio        ', 'Type':'Temp','Value':0.0, 'Min':14.0, 'Max': 28.0, 'Updated':''},
     'VA1_T':    {'Sensor': 'MH1           ', 'Type':'Temp','Value':0.0, 'Min':10.0, 'Max': 30.0, 'Updated':''},
     'VA1_H':    {'Sensor': 'MH1           ', 'Type':'Hum', 'Value':0.0, 'Min':10.0, 'Max': 30.0, 'Updated':''},
     'VA2_T':    {'Sensor': 'MH2           ', 'Type':'Temp','Value':0.0, 'Min':10.0, 'Max': 30.0, 'Updated':''},
@@ -121,6 +122,77 @@ def open_serial(port: str, baud: int, timeout: float) -> serial.Serial:
 
 def format_ts() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")[:-3]
+
+def open_config_window(root, tag):
+    selected_tag =tag
+    conf_window = tk.Toplevel(root)
+    conf_window.title = ('Configurate:',tag)
+    conf_window.geometry('600x400')
+
+    #tk.Label(conf_window, text=f"Tag: {tag}").pack(side=tk.LEFT,pady=5)
+    #fields = []
+    #for i in range(3):
+    #    tk.Label(conf_window, text=f"Field {i+1}:").pack()
+    #    entry = tk.Entry(conf_window)
+    #    entry.pack(pady=5)
+    #    fields.append(entry)
+    print(tag,sensors[tag]['Min'],sensors[tag]['Max'])
+    label_sensor = tk.Label(conf_window, text=tag+sensors[tag]['Sensor'], font=('Arial',12))
+    label_sensor.grid(row=0,column=1,pady=10, sticky='w')
+    
+    
+    var_max = tk.StringVar(value=sensors[tag]['Max'])
+    label_max_value = tk.Label(conf_window, text="Max Value", font=('Arial',12))
+    label_max_value.grid(row=1,column=0,pady=10, sticky='w')
+    entry_max_value = tk.Entry(conf_window, textvariable = var_max, width=30)
+    entry_max_value.grid(row=1,column=1,pady=5, padx=10)
+
+    var_min = tk.StringVar(value=sensors[tag]['Min'])
+    label_min_value = tk.Label(conf_window, text="Min Value", font=('Arial',12))
+    label_min_value.grid(row=2,column=0,pady=10, sticky='w')
+    entry_min_value = tk.Entry(conf_window, textvariable = var_min, width=30)
+    entry_min_value.grid(row=2,column=1,pady=5, padx=10)
+         
+    def accept_min():
+        sensors[tag]['Min'] = entry_min_value.get()
+
+    def accept_max():
+        sensors[tag]['Max'] = entry_max_value.get()
+
+    def accept():
+        values = [field.get() for field in fields]
+        print(f"Values: {values}")
+        conf_window.destroy()
+        
+    def exit_window():
+        conf_window.destroy();
+
+    btn_max_value = tk.Button(conf_window, text='Accept', command = accept_max)
+    btn_max_value.grid(row=1,column=2,pady=10, padx=10)
+    btn_min_value = tk.Button(conf_window, text='Accept', command = accept_min)
+    btn_min_value.grid(row=2,column=2,pady=10, padx=10)
+
+    btn_exit = tk.Button(conf_window, text='Exit', command=exit_window)
+    btn_exit.grid(row=3,column=2,pady=10, padx=10)
+
+    
+    #button_frame = tk.Frame(conf_window)
+    #button_frame.pack(pady=10)
+    #tk.Button(button_frame, text='Accept', command=accept).pack(side=tk.LEFT,padx=5)
+    #tk.Button(button_frame, text='Exit', command=exit_window).pack(side=tk.LEFT,padx=5)
+
+             
+             
+             
+             
+             
+             
+             
+             
+             
+             
+             
+
 
 def parse_line(line):
     try:
@@ -223,10 +295,8 @@ def main() -> int:
     root = tk.Tk()
     root.title("Villa Astrid Control Room")
     geom = "{0}x{1}".format(DIM_WIDTH,DIM_HEIGHT)
-    #root.geometry("800x400")
     root.geometry(geom)
 
-    # Create 4 labels
     labels = []
     buttons = []
     for i in range(nbr_of_sensors):
@@ -234,7 +304,8 @@ def main() -> int:
         # label.pack(anchor=tk.W, pady=5, width=200)
         label.place(x=0, y=i*DIM_ROW_HEIGHT, width=DIM_ROW_WIDTH, height=DIM_ROW_HEIGHT)
         labels.append(label)
-        btn = tk.Button(root,text='OK', command=lambda tag = msg_tags[i]: cb_verify(tag))
+        # btn = tk.Button(root,text='OK', command=lambda tag = msg_tags[i]: cb_verify(tag))
+        btn = tk.Button(root,text='OK', command=lambda tag = msg_tags[i]: open_config_window(root,tag))
         btn.place(x=DIM_BTN_X0, y=i*DIM_ROW_HEIGHT, width=DIM_BTN_WIDTH, height=DIM_ROW_HEIGHT)
         buttons.append(btn)
 
