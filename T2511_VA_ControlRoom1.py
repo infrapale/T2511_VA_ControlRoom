@@ -129,18 +129,10 @@ def open_config_window(root, tag):
     conf_window.title = ('Configurate:',tag)
     conf_window.geometry('600x400')
 
-    #tk.Label(conf_window, text=f"Tag: {tag}").pack(side=tk.LEFT,pady=5)
-    #fields = []
-    #for i in range(3):
-    #    tk.Label(conf_window, text=f"Field {i+1}:").pack()
-    #    entry = tk.Entry(conf_window)
-    #    entry.pack(pady=5)
-    #    fields.append(entry)
     print(tag,sensors[tag]['Min'],sensors[tag]['Max'])
     label_sensor = tk.Label(conf_window, text=tag+sensors[tag]['Sensor'], font=('Arial',12))
     label_sensor.grid(row=0,column=1,pady=10, sticky='w')
-    
-    
+        
     var_max = tk.StringVar(value=sensors[tag]['Max'])
     label_max_value = tk.Label(conf_window, text="Max Value", font=('Arial',12))
     label_max_value.grid(row=1,column=0,pady=10, sticky='w')
@@ -154,10 +146,10 @@ def open_config_window(root, tag):
     entry_min_value.grid(row=2,column=1,pady=5, padx=10)
          
     def accept_min():
-        sensors[tag]['Min'] = entry_min_value.get()
+        sensors[tag]['Min'] = float(entry_min_value.get())
 
     def accept_max():
-        sensors[tag]['Max'] = entry_max_value.get()
+        sensors[tag]['Max'] = float(entry_max_value.get())
 
     def accept():
         values = [field.get() for field in fields]
@@ -175,25 +167,7 @@ def open_config_window(root, tag):
     btn_exit = tk.Button(conf_window, text='Exit', command=exit_window)
     btn_exit.grid(row=3,column=2,pady=10, padx=10)
 
-    
-    #button_frame = tk.Frame(conf_window)
-    #button_frame.pack(pady=10)
-    #tk.Button(button_frame, text='Accept', command=accept).pack(side=tk.LEFT,padx=5)
-    #tk.Button(button_frame, text='Exit', command=exit_window).pack(side=tk.LEFT,padx=5)
-
-             
-             
-             
-             
-             
-             
-             
-             
-             
-             
-             
-
-
+ 
 def parse_line(line):
     try:
         # Read loop
